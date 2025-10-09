@@ -482,3 +482,26 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Rider
+.idea/
+_ReSharper.Caches/
+
+# Build results
+[Bb]in/
+[Oo]bj/
+
+# NuGet generated
+*.nuget.g.props
+*.nuget.g.targets
+**/*.csproj.nuget.g.props
+**/*.csproj.nuget.g.targets
+project.assets.json
+project.nuget.cache
+project.packagespec.json
+*.cache
+*.cache.json
+
+# Rider restore infos
+*.rider.project.model.nuget.info
+*.rider.project.restore.info
