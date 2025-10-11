@@ -1,24 +1,22 @@
-﻿using Core.Entities;
+﻿using API.RequestHelpers;
+using Core.Entities;
 using Core.Interfaces;
 using Core.Specifications;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public class ProductsController(IGenericRepository<Product> repo) : ControllerBase
+public class ProductsController(IGenericRepository<Product> repo) : BaseApiController
 {
     #region CRUD Operations
-    [HttpGet] //api/products
-    public async Task<ActionResult<IReadOnlyList<Product>>> GetProducts(string? brand, string? type, string? sort) // no need to use [FromQuery]
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<Product>>> GetProducts([FromQuery]ProductSpecParams specParams)
     {
-        var spec = new ProductSpecification(brand, type, sort);
-        var products = await repo.ListAsync(spec);
-        return Ok(products);
+        var spec = new ProductSpecification(specParams);
+        return await CreatePagedResult(repo, spec,  specParams.PageIndex, specParams.PageSize);
     }
 
-    [HttpGet("{id:int}")] // api/products/2
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     { 
        var product =  await repo.GetByIdAsync(id);
@@ -31,7 +29,7 @@ public class ProductsController(IGenericRepository<Product> repo) : ControllerBa
     }
 
     [HttpPost] 
-    public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product) // FromBody is optional as we use ApiController annotation
+    public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product)
     {
         repo.Add(product);
         if (await repo.SaveAllAsync())
