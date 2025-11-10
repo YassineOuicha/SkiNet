@@ -9,6 +9,7 @@ import {loadingInterceptor} from './core/interceptors/loading.interceptor';
 import {InitService} from './core/services/init.service';
 import {lastValueFrom} from 'rxjs';
 import {MAT_DIALOG_DEFAULT_OPTIONS} from '@angular/material/dialog';
+import {authInterceptor} from './core/interceptors/auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,7 +18,8 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideHttpClient(withInterceptors([
       errorInterceptor,
-      loadingInterceptor
+      loadingInterceptor,
+      authInterceptor
     ])),
     provideAppInitializer(async () => {
       const initService = inject(InitService);
