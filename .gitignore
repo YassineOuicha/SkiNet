@@ -505,3 +505,7 @@ project.packagespec.json
 # Rider restore infos
 *.rider.project.model.nuget.info
 *.rider.project.restore.info
+
+
+# Secrets
+appsettings.json
