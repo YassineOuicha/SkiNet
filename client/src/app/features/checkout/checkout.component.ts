@@ -1,10 +1,16 @@
-import {Component, inject, OnDestroy, OnInit} from '@angular/core';
+import {Component, inject, OnDestroy, OnInit, signal} from '@angular/core';
 import {OrderSummaryComponent} from '../../shared/components/order-summary/order-summary.component';
-import {MatStepperModule} from '@angular/material/stepper';
-import {RouterLink} from '@angular/router';
+import {MatStepper, MatStepperModule} from '@angular/material/stepper';
+import {Router, RouterLink} from '@angular/router';
 import {MatButton} from '@angular/material/button';
 import {StripeService} from '../../core/services/stripe.service';
-import {StripeAddressElement, StripePaymentElement} from '@stripe/stripe-js';
+import {
+  ConfirmationToken,
+  StripeAddressElement,
+  StripeAddressElementChangeEvent,
+  StripePaymentElement,
+  StripePaymentElementChangeEvent
+} from '@stripe/stripe-js';
 import {SnackbarService} from '../../core/services/snackbar.service';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
 import {StepperSelectionEvent} from '@angular/cdk/stepper';
@@ -15,6 +21,7 @@ import {CheckoutDeliveryComponent} from './checkout-delivery/checkout-delivery.c
 import {CheckoutReviewComponent} from './checkout-review/checkout-review.component';
 import {CartService} from '../../core/services/cart.service';
 import {CurrencyPipe} from '@angular/common';
+import {MatProgressSpinner} from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-checkout',
@@ -26,7 +33,8 @@ import {CurrencyPipe} from '@angular/common';
     MatCheckbox,
     CheckoutDeliveryComponent,
     CheckoutReviewComponent,
-    CurrencyPipe
+    CurrencyPipe,
+    MatProgressSpinner
   ],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.scss'
@@ -39,17 +47,50 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   addressElement?: StripeAddressElement;
   paymentElement?: StripePaymentElement;
   protected saveAddress = false;
+  completionStatus = signal<{ address: boolean, card: boolean, delivery: boolean }>(
+    {
+      address: false, card: false, delivery: false
+    }
+  );
+  confirmationToken?: ConfirmationToken;
+  private router = inject(Router);
+  loading = false;
 
   async ngOnInit() {
     try {
       this.addressElement = await this.stripeService.createAddressElement();
       this.addressElement.mount('#address_element');
 
+      this.addressElement.on('change', this.handleAddressChange);
+
       this.paymentElement = await this.stripeService.createPaymentElement();
       this.paymentElement.mount('#payment_element');
+
+      this.paymentElement.on('change', this.handlePaymentChange)
     } catch (err: any) {
       this.snackbar.error(err.message)
     }
+  }
+
+  handleAddressChange = (event: StripeAddressElementChangeEvent) => {
+    this.completionStatus.update(state => {
+      state.address = event.complete
+      return state;
+    })
+  }
+
+  handlePaymentChange = (event: StripePaymentElementChangeEvent) => {
+    this.completionStatus.update(state => {
+      state.card = event.complete
+      return state;
+    })
+  }
+
+  handleDeliveryChange(event: boolean) {
+    this.completionStatus.update(state => {
+      state.delivery = event;
+      return state;
+    });
   }
 
   ngOnDestroy() {
@@ -58,6 +99,21 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   onSaveAddressCheckboxChange(event: MatCheckboxChange) {
     this.saveAddress = event.checked;
+  }
+
+  async getConfirmationToken() {
+    try {
+      if (Object.values(this.completionStatus()).every(status => status)) {
+        const result = await this.stripeService.createConfirmationToken();
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+        this.confirmationToken = result.confirmationToken;
+        console.log(this.confirmationToken)
+      }
+    } catch (error: any) {
+      this.snackbar.error(error.message);
+    }
   }
 
   protected async onStepChange(event: StepperSelectionEvent) {
@@ -70,6 +126,31 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     if (event.selectedIndex === 2) {
       await lastValueFrom(this.stripeService.createOrUpdatePaymentIntent());
+    }
+
+    if (event.selectedIndex === 3) {
+      await this.getConfirmationToken();
+    }
+  }
+
+  async confirmPayment(stepper: MatStepper) {
+    this.loading = true;
+    try {
+      if (this.confirmationToken) {
+        const result = await this.stripeService.confirmPayment(this.confirmationToken);
+        if (result.error) {
+          throw new Error(result.error.message);
+        } else {
+          this.cartService.deleteCart();
+          this.cartService.selectedDelivery.set(null);
+          await this.router.navigateByUrl('/checkout/success');
+        }
+      }
+    } catch (err: any) {
+      this.snackbar.error(err.message || 'Something went wrong');
+      stepper.previous();
+    } finally {
+      this.loading = false;
     }
   }
 
