@@ -14,7 +14,7 @@ public static class ClaimsPrincipleExtensions
         return userToReturn ?? throw new AuthenticationException("User not found");
     }
 
-    private static string GetEmail(this ClaimsPrincipal user)
+    public static string GetEmail(this ClaimsPrincipal user)
     {
         var email = user.FindFirstValue(ClaimTypes.Email);
         return email ?? throw new AuthenticationException("Email not found");
