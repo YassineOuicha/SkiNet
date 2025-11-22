@@ -44,9 +44,15 @@ export class CartService {
   }
 
   setCart(cart: Cart) {
-    return this.http.post(this.baseUrl + 'cart', cart).subscribe({
+    const cartCloned: Cart = {
+      ...cart,
+      items: [...cart.items]
+    };
+    this.cart.set(cartCloned);
+
+    return this.http.post(this.baseUrl + 'cart', cartCloned).subscribe({
       next: () => {
-        this.cart.set(cart);
+        // Cart successfully set on server
       },
       error: error => {
         console.error('Error setting cart:', error);
@@ -55,12 +61,16 @@ export class CartService {
   }
 
   addItemToCart(item: CartItem | Product, quantity = 1) {
-    const cart = this.cart() ?? this.createCart();
-    if (this.isProduct(item)) {
-      item = this.mapProductToCartItem(item);
-    }
-    cart.items = this.addOrUpdateItem(cart.items, item, quantity);
-    this.setCart(cart);
+    const currentCart = this.cart() ?? this.createCart();
+    const cartItem = this.isProduct(item) ? this.mapProductToCartItem(item) : item;
+    const updatedItems = this.addOrUpdateItem([...currentCart.items], cartItem, quantity);
+
+    const updatedCart: Cart = {
+      ...currentCart,
+      items: updatedItems
+    };
+
+    this.setCart(updatedCart);
   }
 
   removeItemFromCart(productId: number, quantity = 1) {
