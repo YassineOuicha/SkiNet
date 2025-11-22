@@ -43,9 +43,15 @@ app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().AllowCredentials()
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();    
+
 app.MapControllers();
 app.MapGroup("api").MapIdentityApi<AppUser>();  // api/login
 app.MapHub<NotificationHub>("/hub/notifications");
+
+// angular should handle his routes / components & not by dotnet side ! so we use :
+app.MapFallbackToController("Index", "Fallback");
 
 try
 {

@@ -3,13 +3,13 @@ import {provideRouter} from '@angular/router';
 
 import {routes} from './app.routes';
 import {provideHttpClient, withInterceptors} from '@angular/common/http';
-import {provideAnimationsAsync} from '@angular/platform-browser/animations/async';
 import {errorInterceptor} from './core/interceptors/error.interceptor';
 import {loadingInterceptor} from './core/interceptors/loading.interceptor';
 import {InitService} from './core/services/init.service';
 import {lastValueFrom} from 'rxjs';
 import {MAT_DIALOG_DEFAULT_OPTIONS} from '@angular/material/dialog';
 import {authInterceptor} from './core/interceptors/auth.interceptor';
+import {provideAnimationsAsync} from '@angular/platform-browser/animations/async';
 
 export const appConfig: ApplicationConfig = {
   providers: [
