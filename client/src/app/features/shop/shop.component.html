@@ -1,4 +1,4 @@
-@if (products) {
+@if (products && products.count > 0) {
   <div class="flex flex-col gap-3">
     <div class="flex justify-between gap-3">
       <mat-paginator
@@ -59,5 +59,12 @@
       }
     </mat-selection-list>
   </mat-menu>
+} @else {
+  <app-empty-state
+    actionText="Reset filters"
+    icon="filter_alt_off"
+    message="No product match your filters"
+    (action)="resetFilters()"
+  ></app-empty-state>
 }
 
