@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(StoreContext))]
-    [Migration("20251115191709_OrderAggregateAdded")]
-    partial class OrderAggregateAdded
+    [Migration("20251124193824_FixRolesAdded")]
+    partial class FixRolesAdded
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -289,6 +289,20 @@ namespace Infrastructure.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "f7e5e9d5-0b32-4f3d-9a0b-111111111111",
+                            Name = "Admin",
+                            NormalizedName = "ADMIN"
+                        },
+                        new
+                        {
+                            Id = "a8c3bb3e-3c44-4b77-9b1a-222222222222",
+                            Name = "Customer",
+                            NormalizedName = "CUSTOMER"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -426,8 +440,9 @@ namespace Infrastructure.Migrations
                             b1.Property<int>("ExpMonth")
                                 .HasColumnType("int");
 
-                            b1.Property<int>("Last4")
-                                .HasColumnType("int");
+                            b1.Property<string>("Last4")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
 
                             b1.Property<int>("Year")
                                 .HasColumnType("int");

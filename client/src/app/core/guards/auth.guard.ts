@@ -7,8 +7,9 @@ export const authGuard: CanActivateFn = (route, state) => {
   const accountService = inject(AccountService);
   const router = inject(Router);
 
+  // we need to return an observable so we can wait the result to see if the user is authenticated
   if (accountService.currentUser()) {
-    return of(true); // we need to return an observable so we can wait the result to see if the user is authenticated
+    return of(true);
   } else {
     return accountService.getAuthState().pipe(
       map(auth => {

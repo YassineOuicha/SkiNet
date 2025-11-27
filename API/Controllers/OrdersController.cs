@@ -87,7 +87,7 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit): BaseA
         var spec = new OrderSpecification(User.GetEmail());
         var orders = await unit.Repository<Order>().ListAsync(spec);
 
-        var ordersToReturn = orders.Select(o => o.ToDo());
+        var ordersToReturn = orders.Select(o => o.ToDto());
         return Ok(ordersToReturn);
     }
 
@@ -102,6 +102,6 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit): BaseA
             return NotFound();
         }
         
-        return order.ToDo();
+        return order.ToDto();
     }
 }

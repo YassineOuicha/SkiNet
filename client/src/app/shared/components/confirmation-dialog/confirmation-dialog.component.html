@@ -1,0 +1,12 @@
+<div class="p-4">
+  <h2 class="text-lg font-semibold mb-4">{{ data.title }}</h2>
+  <p class="mb-4">{{ data.message }}</p>
+  <div class="flex justify-end gap-2">
+    <button mat-raised-button class="bg-green-500 text-gray-200"
+            (click)="onCancel()">{{ data.cancelText || 'Cancel' }}
+    </button>
+    <button mat-raised-button class="bg-red-500 text-gray-200"
+            (click)="onConfirm()">{{ data.confirmText || 'Confirm' }}
+    </button>
+  </div>
+</div>

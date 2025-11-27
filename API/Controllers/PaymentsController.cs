@@ -90,7 +90,7 @@ public class PaymentsController(
             if (!string.IsNullOrEmpty(connectionId))
             {
                 await hubContext.Clients.Client(connectionId)
-                    .SendAsync("OrderCompleteNotification", order.ToDo());
+                    .SendAsync("OrderCompleteNotification", order.ToDto());
             }
         }
     }

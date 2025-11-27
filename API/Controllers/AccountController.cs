@@ -1,4 +1,5 @@
-﻿using API.DTOs;
+﻿using System.Security.Claims;
+using API.DTOs;
 using API.Extensions;
 using Core.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -52,7 +53,8 @@ public class AccountController(SignInManager<AppUser> signInManager): BaseApiCon
             user.FirstName,
             user.LastName,
             user.Email,
-            Address = user.Address?.ToDto()
+            Address = user.Address?.ToDto(),
+            Roles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToList()
         });
     }
 

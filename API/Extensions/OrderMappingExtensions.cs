@@ -5,7 +5,7 @@ namespace API.Extensions;
 
 public static class OrderMappingExtensions
 {
-    public static OrderDto ToDo(this Order order)
+    public static OrderDto ToDto(this Order order)
     {
         return new OrderDto
         {
@@ -16,7 +16,7 @@ public static class OrderMappingExtensions
             DeliveryMethod = order.DeliveryMethod.Description,
             ShippingPrice = order.DeliveryMethod.Price,
             PaymentSummary = order.PaymentSummary,
-            OrderItems = order.OrderItems.Select(x => x.ToDo()).ToList(),
+            OrderItems = order.OrderItems.Select(x => x.ToDto()).ToList(),
             Subtotal = order.Subtotal,
             Total = order.GetTotal(),
             Status = order.Status.ToString(),
@@ -24,7 +24,7 @@ public static class OrderMappingExtensions
         };
     }
 
-    private static OrderItemDto ToDo(this OrderItem orderItem)
+    private static OrderItemDto ToDto(this OrderItem orderItem)
     {
         return new OrderItemDto
         {
