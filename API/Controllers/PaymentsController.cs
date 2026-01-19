@@ -14,11 +14,12 @@ namespace API.Controllers;
 public class PaymentsController(
     IPaymentService paymentService,
     IUnitOfWork unit,
-    ILogger<PaymentsController> logger, 
+    ILogger<PaymentsController> logger,
     IConfiguration config,
-    IHubContext<NotificationHub> hubContext): BaseApiController
+    IHubContext<NotificationHub> hubContext) : BaseApiController
 {
-    private readonly string _whSecret = config["StripeSettings:WhSecret"]!;
+    private readonly string _whSecret = config.GetSection("StripeSettings:WhSecret").Value!;
+
     [Authorize]
     [HttpPost("{cartId}")]
     public async Task<ActionResult<ShoppingCart>> CreateOrUpdatePaymentIntent(string cartId)
@@ -50,6 +51,7 @@ public class PaymentsController(
             {
                 return BadRequest("Invalid event data");
             }
+
             await HandlePaymentIntentSucceeded(paymentIntent);
 
             return Ok();
@@ -74,14 +76,11 @@ public class PaymentsController(
             var order = await unit.Repository<Order>().GetEntityWithSpec(spec)
                         ?? throw new Exception("Order not found");
 
-            if ((long)order.GetTotal() * 100 != paymentIntent.Amount)
-            {
-                order.Status = OrderStatus.PaymentMismatch;
-            }
-            else
-            {
-                order.Status = OrderStatus.PaymentReceived;
-            }
+            var orderTotalInCents = (long)Math.Round(order.GetTotal() * 100, MidpointRounding.AwayFromZero);
+
+            order.Status = orderTotalInCents != paymentIntent.Amount
+                ? OrderStatus.PaymentMismatch
+                : OrderStatus.PaymentReceived;
 
             await unit.Complete();
 
@@ -103,8 +102,8 @@ public class PaymentsController(
         }
         catch (Exception e)
         {
-           logger.LogError(e, "Failed to construct stripe event");
-           throw new StripeException("Invalid signature");
+            logger.LogError(e, "Failed to construct stripe event");
+            throw new StripeException("Invalid signature");
         }
     }
 }

@@ -1,9 +1,9 @@
 import {computed, inject, Injectable, signal} from '@angular/core';
 import {environment} from '../../../environments/environment';
 import {HttpClient} from '@angular/common/http';
-import {Cart, CartItem} from '../../shared/models/cart';
+import {Cart, CartItem, Coupon} from '../../shared/models/cart';
 import {Product} from '../../shared/models/product';
-import {map} from 'rxjs';
+import {firstValueFrom, map, tap} from 'rxjs';
 import {DeliveryMethod} from '../../shared/models/deliveryMethod';
 
 @Injectable({
@@ -24,13 +24,26 @@ export class CartService {
       return null;
     }
     const subtotal = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    let discountValue = 0;
+
+    if (cart.coupon) {
+      if (cart.coupon.amountOff) {
+        discountValue = cart.coupon.amountOff;
+      } else if (cart.coupon.percentOff) {
+        discountValue = subtotal * (cart.coupon.percentOff / 100);
+      }
+    }
+
     const shipping = delivery ? delivery.price : 0;
-    const discount = 0;
+
+    const total = subtotal + shipping - discountValue;
+
     return {
       shipping,
       subtotal,
-      discount,
-      total: subtotal + shipping - discount
+      discount: discountValue,
+      total
     };
   });
 
@@ -44,36 +57,23 @@ export class CartService {
   }
 
   setCart(cart: Cart) {
-    const cartCloned: Cart = {
-      ...cart,
-      items: [...cart.items]
-    };
-    this.cart.set(cartCloned);
-
-    return this.http.post(this.baseUrl + 'cart', cartCloned).subscribe({
-      next: () => {
-        // Cart successfully set on server
-      },
-      error: error => {
-        console.error('Error setting cart:', error);
-      }
-    })
+    return this.http.post<Cart>(this.baseUrl + 'cart', cart).pipe(
+      tap(cart => {
+        this.cart.set(cart);
+      })
+    );
   }
 
-  addItemToCart(item: CartItem | Product, quantity = 1) {
-    const currentCart = this.cart() ?? this.createCart();
-    const cartItem = this.isProduct(item) ? this.mapProductToCartItem(item) : item;
-    const updatedItems = this.addOrUpdateItem([...currentCart.items], cartItem, quantity);
-
-    const updatedCart: Cart = {
-      ...currentCart,
-      items: updatedItems
-    };
-
-    this.setCart(updatedCart);
+  async addItemToCart(item: CartItem | Product, quantity = 1) {
+    const cart = this.cart() ?? this.createCart();
+    if (this.isProduct(item)) {
+      item = this.mapProductToCartItem(item);
+    }
+    cart.items = this.addOrUpdateItem(cart.items, item, quantity);
+    await firstValueFrom(this.setCart(cart));
   }
 
-  removeItemFromCart(productId: number, quantity = 1) {
+  async removeItemFromCart(productId: number, quantity = 1) {
     const cart = this.cart();
     if (!cart) {
       return;
@@ -89,7 +89,7 @@ export class CartService {
       if (cart.items.length === 0) {
         this.deleteCart();
       } else {
-        this.setCart(cart);
+        await firstValueFrom(this.setCart(cart));
       }
     }
   }
@@ -137,5 +137,9 @@ export class CartService {
         console.error('Error deleting cart:', error);
       }
     });
+  }
+
+  applyDiscount(code: string) {
+    return this.http.get<Coupon>(this.baseUrl + 'coupons/' + code);
   }
 }

@@ -17,25 +17,31 @@ builder.Services.AddDbContext<StoreContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+// instance per http request
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddCors();
-builder.Services.AddSingleton<IConnectionMultiplexer>(config => 
-    {
-       var connString = builder.Configuration.GetConnectionString("Redis")
-                        ?? throw new Exception("Redis connection string is not configured.");
-       var configuration = ConfigurationOptions.Parse(connString, true); 
-       return ConnectionMultiplexer.Connect(configuration);
-    });
+builder.Services.AddSingleton<IConnectionMultiplexer>(config =>
+{
+    var connString = builder.Configuration.GetConnectionString("Redis")
+                     ?? throw new Exception("Redis connection string is not configured.");
+    var configuration = ConfigurationOptions.Parse(connString, true);
+    return ConnectionMultiplexer.Connect(configuration);
+});
+// same instance for the whole app lifetime
 builder.Services.AddSingleton<ICartService, CartService>();
+builder.Services.AddSingleton<IResponseCacheService, ResponseCacheService>();
 
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<AppUser>()
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<StoreContext>();
 
+// instance per http request
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<ICouponService, CouponService>();
 builder.Services.AddSignalR();
 
 var app = builder.Build();
@@ -43,16 +49,16 @@ var app = builder.Build();
 // configure the http request pipeline
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().AllowCredentials()
-    .WithOrigins("http://localhost:4200","https://localhost:4200"));
+    .WithOrigins("http://localhost:4200", "https://localhost:4200"));
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseDefaultFiles();
-app.UseStaticFiles();    
+app.UseStaticFiles();
 
 app.MapControllers();
-app.MapGroup("api").MapIdentityApi<AppUser>();  // api/login
+app.MapGroup("api").MapIdentityApi<AppUser>(); // api/login
 app.MapHub<NotificationHub>("/hub/notifications");
 
 // angular should handle his routes / components & not by dotnet side ! so we use :
@@ -67,7 +73,7 @@ try
     var userManager = services.GetRequiredService<UserManager<AppUser>>();
     // applies any pending migrations for the context to the database. Will create the database if it does not already exist.
     await context.Database.MigrateAsync();
-    
+
     // Seeding data
     await StoreContextSeed.SeedAsync(context, userManager);
 }

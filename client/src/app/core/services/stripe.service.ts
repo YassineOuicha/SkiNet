@@ -12,7 +12,7 @@ import {environment} from '../../../environments/environment';
 import {HttpClient} from '@angular/common/http';
 import {CartService} from './cart.service';
 import {Cart} from '../../shared/models/cart';
-import {lastValueFrom, map} from 'rxjs';
+import {firstValueFrom, lastValueFrom, map} from 'rxjs';
 import {AccountService} from './account.service';
 
 // we need to use only one instance of stripe at a time otherwise there will be payments issues
@@ -143,12 +143,17 @@ export class StripeService {
 
   createOrUpdatePaymentIntent() {
     const cart = this.cartService.cart();
+    const hasClientSecret = !!cart?.clientSecret;
+
     if (!cart) {
       throw new Error('Problem with cart');
     }
     return this.http.post<Cart>(this.baseUrl + 'payments/' + cart.id, {}).pipe(
-      map(cart => {
-        this.cartService.setCart(cart); // we update redis db not just locally
+      map(async cart => {
+        if (!hasClientSecret) {
+          await firstValueFrom(this.cartService.setCart(cart)); // we update redis db not just locally
+          return cart;
+        }
         return cart;
       })
     );

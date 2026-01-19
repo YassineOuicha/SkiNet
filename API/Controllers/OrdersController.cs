@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers;
 
 [Authorize]
-public class OrdersController(ICartService cartService, IUnitOfWork unit): BaseApiController
+public class OrdersController(ICartService cartService, IUnitOfWork unit) : BaseApiController
 {
     [HttpPost]
     public async Task<ActionResult<Order>> CreateOrder(CreateOrderDto orderDto)
@@ -22,11 +22,11 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit): BaseA
             return BadRequest("Cart not found");
         }
 
-        if (cart.PaymentIntId == null)
+        if (cart.PaymentIntentId == null)
         {
             return BadRequest("No payment intent for this order");
         }
-        
+
         var items = new List<OrderItem>();
         foreach (var item in cart.Items)
         {
@@ -42,14 +42,14 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit): BaseA
                 ProductName = item.ProductName,
                 PictureUrl = item.PictureUrl
             };
-            
+
             var orderItem = new OrderItem
             {
                 ItemOrdered = itemOrdered,
                 Price = productItem.Price,
                 Quantity = item.Quantity,
             };
-            
+
             items.Add(orderItem);
         }
 
@@ -66,11 +66,12 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit): BaseA
             DeliveryMethod = deliveryMethod,
             ShippingAddress = orderDto.ShippingAddress,
             Subtotal = items.Sum(x => x.Price * x.Quantity),
-            PaymentIntentId = cart.PaymentIntId,
+            Discount = orderDto.Discount,
+            PaymentIntentId = cart.PaymentIntentId,
             BuyerEmail = email,
             PaymentSummary = orderDto.PaymentSummary,
         };
-        
+
         unit.Repository<Order>().Add(order);
 
         if (await unit.Complete())
@@ -101,7 +102,7 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit): BaseA
         {
             return NotFound();
         }
-        
+
         return order.ToDto();
     }
 }
