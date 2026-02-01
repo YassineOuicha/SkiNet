@@ -13,8 +13,8 @@ public class RoleConfiguration: IEntityTypeConfiguration<IdentityRole>
         const string customerRoleId = "a8c3bb3e-3c44-4b77-9b1a-222222222222";
         
         builder.HasData(
-            new IdentityRole{Id = adminRoleId, Name = "Admin", NormalizedName = "ADMIN"},
-            new IdentityRole{Id = customerRoleId, Name = "Customer", NormalizedName = "CUSTOMER"}
+            new IdentityRole{Id = adminRoleId, ConcurrencyStamp = "admin",Name = "Admin", NormalizedName = "ADMIN"},
+            new IdentityRole{Id = customerRoleId, ConcurrencyStamp = "customer",Name = "Customer", NormalizedName = "CUSTOMER"}
         );
     }
 }
