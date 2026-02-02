@@ -1,4 +1,4 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, signal} from '@angular/core';
 import {OrderService} from '../../core/services/order.service';
 import {Order} from '../../shared/models/order';
 import {RouterLink} from '@angular/router';
@@ -16,11 +16,11 @@ import {CurrencyPipe, DatePipe} from '@angular/common';
 })
 export class OrderComponent implements OnInit {
   private orderService = inject(OrderService);
-  orders: Order[] = [];
+  orders = signal<Order[]>([]);
 
   ngOnInit() {
     this.orderService.getOrdersForUser().subscribe({
-      next: ordersList => this.orders = ordersList
+      next: ordersList => this.orders.set(ordersList)
     })
   }
 }
