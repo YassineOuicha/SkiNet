@@ -1,0 +1,50 @@
+<div class="p-4">
+  <table class="min-w-full bg-white border-gray-300">
+    <thead>
+    <tr class="border-b bg-gray-200">
+      @for (column of columns; track $index) {
+        <th class="py-2 px-4 text-left">{{ column.header }}</th>
+      }
+      @if (actions.length) {
+        <th class="py-2 px-4 text-left">Actions</th>
+      }
+    </tr>
+    </thead>
+    <tbody>
+      @for (row of dataSource; track $index) {
+        <tr class="border-b">
+          @for (column of columns; track $index) {
+            <td class="py-2 px-4">{{ getCellValue(row, column) }}</td>
+          }
+          @if (actions.length) {
+            <td class="py-2 px-4">
+              <div class="flex gap-2">
+                @for (action of actions; track $index) {
+                  <ng-container>
+                    <button
+                      mat-icon-button
+                      matTooltip="{{action.tooltip}}"
+                      [disabled]="action.disabled? action.disabled(row): false"
+                      (click)="onAction(action.action, row)">
+                      <mat-icon>{{ action.icon }}</mat-icon>
+                    </button>
+                  </ng-container>
+                }
+              </div>
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  <mat-paginator
+    [length]="totalItems"
+    [pageSize]="pageSize"
+    [pageIndex]="pageIndex"
+    [pageSizeOptions]="[5, 10, 20]"
+    (page)="onPageChange($event)"
+    class="mt-4 bg-white"
+  >
+  </mat-paginator>
+</div>
