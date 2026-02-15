@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Stripe;
+using Product = Core.Entities.Product;
 
 namespace API.Controllers;
 
@@ -47,25 +48,51 @@ public class PaymentsController(
         try
         {
             var stripeEvent = ConstructStripeEvent(json);
-            if (stripeEvent.Data.Object is not PaymentIntent paymentIntent)
+            if (stripeEvent.Data.Object is not PaymentIntent intent)
             {
                 return BadRequest("Invalid event data");
             }
 
-            await HandlePaymentIntentSucceeded(paymentIntent);
+            if (intent.Status == "succeeded")
+            {
+                await HandlePaymentIntentSucceeded(intent);
+            }
+            else
+            {
+                await HandlePaymentIntentFailed(intent);
+            }
 
             return Ok();
         }
         catch (StripeException ex)
         {
-            logger.LogError(ex, "Stripe webhook error occured");
-            return StatusCode(StatusCodes.Status500InternalServerError, "\"Stripe webhook error occured");
+            logger.LogError(ex, "Stripe webhook error");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Stripe webhook error occured");
         }
         catch (Exception e)
         {
             logger.LogError(e, "An expected error occured");
             return StatusCode(StatusCodes.Status500InternalServerError, "An expected error occured");
         }
+    }
+
+    private async Task HandlePaymentIntentFailed(PaymentIntent intent)
+    {
+        // create spec for order with order items based on payment intent id
+        var spec = new OrderSpecification(intent.Id, true);
+        var order = await unit.Repository<Order>().GetEntityWithSpec(spec)
+                    ?? throw new Exception("Order not found");
+        
+        // update quantities for the products in stock based on the failed order
+        foreach (var item in order.OrderItems)
+        {
+            var productItem = await unit.Repository<Product>().GetByIdAsync(item.ItemOrdered.ProductId)
+                ?? throw new Exception("Problem updating order stock");
+            productItem.QuantityInStock += item.Quantity;
+        }
+        
+        order.Status = OrderStatus.PaymentFailed;
+        await unit.Complete();
     }
 
     private async Task HandlePaymentIntentSucceeded(PaymentIntent paymentIntent)

@@ -1,5 +1,6 @@
 ﻿using API.DTOs;
 using API.Extensions;
+using API.RequestHelpers;
 using Core.Entities;
 using Core.Entities.OrderAggregate;
 using Core.Interfaces;
@@ -12,6 +13,7 @@ namespace API.Controllers;
 [Authorize]
 public class OrdersController(ICartService cartService, IUnitOfWork unit) : BaseApiController
 {
+    [InvalidateCache(("api/products|"))]
     [HttpPost]
     public async Task<ActionResult<Order>> CreateOrder(CreateOrderDto orderDto)
     {
@@ -33,9 +35,17 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
             var productItem = await unit.Repository<Product>().GetByIdAsync(item.ProductId);
             if (productItem == null)
             {
-                return BadRequest("Problem with the order");
+                return BadRequest($"Product with ID {item.ProductId} not found");
             }
-
+            
+            if (productItem.QuantityInStock < item.Quantity)
+            {
+                return BadRequest($"Not enough stock for {productItem.Name}. Available stock: {productItem.QuantityInStock} items.");
+            }
+            
+            // Decrease the stock quantity of the product
+            productItem.QuantityInStock -= item.Quantity;
+            
             var itemOrdered = new ProductItemOrdered
             {
                 ProductId = item.ProductId,
@@ -51,6 +61,9 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
             };
 
             items.Add(orderItem);
+            
+            // Update the product stock in the database
+            unit.Repository<Product>().Update(productItem);
         }
 
         var deliveryMethod = await unit.Repository<DeliveryMethod>().GetByIdAsync(orderDto.DeliveryMethodId);
@@ -60,6 +73,7 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
             return BadRequest("No delivery metho selected, please select one!");
         }
 
+        // Create the new order object
         var order = new Order
         {
             OrderItems = items,
@@ -71,8 +85,31 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
             BuyerEmail = email,
             PaymentSummary = orderDto.PaymentSummary,
         };
+        
+        // Check if there is an existing order with the same payment intent ID
+        var spec = new OrderSpecification(cart.PaymentIntentId, true);
+        var existingOrder = await unit.Repository<Order>().GetEntityWithSpec(spec);
 
-        unit.Repository<Order>().Add(order);
+        if (existingOrder is not null)
+        {
+            // Merge fields to preserve the existing order while updating necessary details
+            existingOrder.OrderItems = order.OrderItems;
+            existingOrder.DeliveryMethod = order.DeliveryMethod;
+            existingOrder.ShippingAddress = order.ShippingAddress;
+            existingOrder.Subtotal = order.Subtotal;
+            existingOrder.Discount = order.Discount;
+            existingOrder.PaymentSummary = order.PaymentSummary;
+            existingOrder.BuyerEmail = order.BuyerEmail;
+            
+            // Update the existing order in the database
+            unit.Repository<Order>().Update(existingOrder);
+            order = existingOrder; // Set the return value to the updated order
+        }
+        else
+        {
+            // Add the new order to the database if no existing order is found
+            unit.Repository<Order>().Add(order);
+        }
 
         if (await unit.Complete())
         {

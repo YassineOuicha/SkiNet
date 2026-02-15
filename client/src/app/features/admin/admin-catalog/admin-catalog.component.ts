@@ -11,6 +11,7 @@ import {AdminService} from '../../../core/services/admin.service';
 import {lastValueFrom} from 'rxjs';
 import {DialogService} from '../../../core/services/dialog.service';
 import {Router} from '@angular/router';
+import {UpdateQuantityComponent} from '../update-quantity/update-quantity.component';
 
 @Component({
   selector: 'app-admin-catalog',
@@ -70,7 +71,7 @@ export class AdminCatalogComponent implements OnInit {
       icon: 'add_circle',
       tooltip: 'Update quantity in stock',
       action: (row: any) => {
-        console.log(row);
+        this.openQuantityDialog(row);
       }
     }
   ]
@@ -152,6 +153,29 @@ export class AdminCatalogComponent implements OnInit {
     if (confirmed) {
       this.onDelete(id);
     }
+  }
+
+  openQuantityDialog(product: Product) {
+    const dialog = this.dialog.open(UpdateQuantityComponent, {
+      minWidth: '500px',
+      data: {
+        quantity: product.quantityInStock,
+        name: product.name,
+      }
+    });
+
+    dialog.afterClosed().subscribe({
+      next: async result => {
+        if (result) {
+          console.log(result);
+          await lastValueFrom(this.adminService.updateStock(product.id, result.updatedQuantity));
+          const index = this.products.findIndex(p => p.id === product.id);
+          if (index !== -1) {
+            this.products[index].quantityInStock = result.updatedQuantity;
+          }
+        }
+      }
+    })
   }
 
   private onDelete(id: number) {

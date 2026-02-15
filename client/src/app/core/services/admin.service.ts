@@ -45,6 +45,6 @@ export class AdminService {
   }
 
   updateStock(id: number, newQuantity: number) {
-    return this.http.put(this.baseUrl + 'products/update-stock' + id, newQuantity);
+    return this.http.put(this.baseUrl + 'products/update-stock/' + id, newQuantity);
   }
 }
