@@ -6,6 +6,7 @@ import {MatButtonModule} from '@angular/material/button';
 import {TextAreaComponent} from '../../../shared/components/text-area/text-area.component';
 import {ShopService} from '../../../core/services/shop.service';
 import {SelectInputComponent} from '../../../shared/components/select-input/select-input.component';
+import {Product} from '../../../shared/models/product';
 
 @Component({
   selector: 'app-product-form',
@@ -33,6 +34,9 @@ export class ProductFormComponent implements OnInit {
     setTimeout(() => {
       this.loadBrandsAndTypes();
     }, 1000)
+    if (this.data.product) {
+      this.productForm.reset(this.data.product);
+    }
   }
 
   private initializeForm() {
@@ -49,7 +53,10 @@ export class ProductFormComponent implements OnInit {
 
   onSubmit() {
     if (this.productForm.valid) {
-      let product = this.productForm.value;
+      let product: Product = this.productForm.value;
+      if (this.data.product) {
+        product.id = this.data.product.id;
+      }
       this.dialogRef.close({
         product
       });
